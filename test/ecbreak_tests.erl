@@ -23,8 +23,9 @@ calls_test_() ->
 	     application:start(ecbreak),
 	     file:write_file("m.erl",
 			    "-module(m).\n"
-			    "-export([ok/0]).\n"
-			     "ok() -> ok."),
+			    "-export([ok/0, fail/0]).\n"
+			     "ok() -> ok.\n"
+			     "fail() -> throw(failure).\n"),
 	     compile:file("m.erl")	     
      end,
      fun(_) ->
@@ -32,9 +33,13 @@ calls_test_() ->
 	     file:delete("m.erl"),
 	     file:delete("m.beam")
      end,
-     fun(_) ->
-	     ?_assertMatch(ok, ecbreak:call(m, ok, []))
-     end
+     [
+      ?_assertMatch(ok, ecbreak:call(m, ok, [])),
+      {inorder,
+       [?_assertMatch(ok, ecbreak:call(m, ok, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, []))]
+      }
+     ]
     }.
 
 
