@@ -37,7 +37,8 @@ calls_test_() ->
       ?_assertMatch(ok, ecbreak:call(m, ok, [])),
       {inorder,
        [?_assertMatch(ok, ecbreak:call(m, ok, [])),
-	?_assertThrow(failure, ecbreak:call(m, fail, []))]
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertMatch(ok, ecbreak:set_failure_threshold(5))]
       }
      ]
     }.
