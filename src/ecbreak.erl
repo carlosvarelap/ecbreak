@@ -14,7 +14,7 @@
 
 %% gen_fsm callbacks
 -export([init/1, closed/2, closed/3, handle_event/3,
-	 open/2, open/3,
+	 open/2, open/3, reset/0,
 	 handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
 -record(state, {threshold = 10, 
@@ -59,6 +59,15 @@ call(Module, Function, Args) ->
 -spec set_failure_threshold(integer()) -> ok.
 set_failure_threshold(Threshold) when is_integer(Threshold) ->
     gen_fsm:sync_send_all_state_event(?SERVER, {set_failure_threshold, Threshold}).
+
+%%--------------------------------------------------------------------
+%% @doc Reset counter and puts in closed state
+%% @spec reset() -> ok
+%% @end
+%%--------------------------------------------------------------------
+-spec reset() -> ok.
+reset()  ->
+    gen_fsm:sync_send_all_state_event(?SERVER, reset).
     
 %%====================================================================
 %% gen_fsm callbacks
@@ -113,10 +122,18 @@ open(_Event, State) ->
 %% @private
 %%--------------------------------------------------------------------
 closed({call, Module, Function, Args}, _From, State) ->
-    {Reply, NewState} = 
+    {Reply, ReturnState} = 
 	try
-	    {private_call(Module, Function, Args),
-	     State}
+	    NewState = 
+		case State#state.remainder_fails =:= State#state.threshold of
+		    true ->
+			State;
+		    false ->
+			State#state{remainder_fails=
+				    State#state.remainder_fails+1}
+		end,
+	    {private_call(Module, Function, Args),	     
+	     NewState}
 	catch
 	    Exception ->
 		{{throw, Exception},
@@ -124,13 +141,13 @@ closed({call, Module, Function, Args}, _From, State) ->
 			     State#state.remainder_fails-1}}
 	end,
     NextState = 
-	case NewState#state.remainder_fails of
+	case ReturnState#state.remainder_fails of
 	    0 ->
 		open;
 	    _ ->
 		closed
 	end,
-    {reply, Reply, NextState, NewState}.
+    {reply, Reply, NextState, ReturnState}.
 
 %% @private
 open({call, _Module, _Function, _Args}, _From, State) ->
@@ -179,6 +196,11 @@ handle_sync_event({set_failure_threshold, Threshold},
 				   State#state.remainder_fails
 			   end},
     {reply, Reply, StateName, NewState};
+handle_sync_event(reset, _From, _StateName, State) ->
+    Reply = ok,
+    NewState = State#state{remainder_fails=
+			   State#state.threshold},
+    {reply, Reply, closed, NewState};
 handle_sync_event(_Event, _From, StateName, State) ->
     Reply = ok,
     {reply, Reply, StateName, State}.

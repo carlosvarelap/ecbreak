@@ -67,9 +67,17 @@ threshold_test_() ->
 	?_assertThrow(failure, ecbreak:call(m, fail, [])),
 	?_assertThrow(failure, ecbreak:call(m, fail, [])),
 	?_assertThrow(failure, ecbreak:call(m, fail, [])),
-	?_assertThrow(open_circuit, ecbreak:call(m, fail, []))
-       ]
-      }
+	?_assertThrow(open_circuit, ecbreak:call(m, fail, []))]},
+      {inorder,
+       [?_assertMatch(ok, ecbreak:reset()),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertMatch(ok, ecbreak:call(m, ok, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(open_circuit, ecbreak:call(m, fail, []))]}      
      ]
     }.
 
