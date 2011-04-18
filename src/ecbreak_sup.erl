@@ -1,4 +1,10 @@
-
+%%%-------------------------------------------------------------------
+%%% File    : ecbreak_sup.erl
+%%% Author  : Carlos Varela <carlos.varela.paz@gmail.com>
+%%% Description : 
+%%%
+%%% Created : 18 Apr 2011 by Carlos Varela <carlos.varela.paz@gmail.com>
+%%%-------------------------------------------------------------------
 -module(ecbreak_sup).
 
 -behaviour(supervisor).
@@ -17,7 +23,6 @@
 %% ===================================================================
 
 start_link() ->
-    kk:ll(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
