@@ -43,5 +43,34 @@ calls_test_() ->
      ]
     }.
 
+threshold_test_() ->
+    {setup,
+     fun() ->
+	     application:start(ecbreak),
+	     file:write_file("m.erl",
+			    "-module(m).\n"
+			    "-export([ok/0, fail/0]).\n"
+			     "ok() -> ok.\n"
+			     "fail() -> throw(failure).\n"),
+	     compile:file("m.erl"),
+	     ecbreak:set_failure_threshold(5)
+     end,
+     fun(_) ->
+	     application:stop(ecbreak),
+	     file:delete("m.erl"),
+	     file:delete("m.beam")
+     end,
+     [
+      {inorder,
+       [?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(failure, ecbreak:call(m, fail, [])),
+	?_assertThrow(open_circuit, ecbreak:call(m, fail, []))
+       ]
+      }
+     ]
+    }.
 
 -endif.
