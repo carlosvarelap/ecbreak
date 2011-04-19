@@ -37,7 +37,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 %% @doc calls Module:Function(Args) with the same semantic as erlang:apply/3
 %% @spec call(Module::atom(), Function::atom(), Args::[term()]) -> term()
-%% @throws open_circuit | term()
+%% @throws open_circuit | bad_call | term()
 %% @end
 %%--------------------------------------------------------------------
 -spec call(Module::atom(), Function::atom(), Args::[term()]) -> term().
@@ -249,5 +249,10 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %% @end
 -spec private_call(Module::atom(), Function::atom(), Args::[term()]) -> term().
 private_call(Module, Function, Args) ->
-    erlang:apply(Module, Function, Args).
+    try
+        erlang:apply(Module, Function, Args)
+    catch
+        error:undef ->
+            throw(bad_call)
+    end.
 
