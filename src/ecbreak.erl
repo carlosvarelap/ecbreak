@@ -52,7 +52,10 @@ call(Module, Function, Args) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Sets the failure threshold under which the circuit will be opened
+
+%% @doc Sets the failure threshold under which the circuit will be
+%% opened. Counter is not reset. If current counter is greater than
+%% threshold, it is set to Threshold value.
 %% @spec set_failure_threshold(integer()) -> ok
 %% @end
 %%--------------------------------------------------------------------
