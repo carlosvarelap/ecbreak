@@ -1,6 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @author Samuel Rivas <samuel.rivas@lambdastream.com>
+%%% @author Carlos Varela <carlos.varela.paz@gmail.com>
 %%% @copyright (C) 2009, Samuel Rivas
+%%% @copyright (C) 2011, Carlos Varela
 %%% @doc Some generators for QuickCheck
 %%% @version {@vsn}, {@date} {@time}
 %%%
@@ -18,9 +20,20 @@
          in_intervals/1, printable/0, string/0, atom/0, file_name/0,
          erlang_identifier/0, list_with_duplicates/1, permutation/1,
          setish_vector/2, non_empty_string/0, string/1, char_list/0,
-	 char_list/1, escaped_xml_string/0]).
+	 char_list/1, escaped_xml_string/0, list_of_size/2]).
 
 -include_lib("eqc/include/eqc.hrl").
+
+%%--------------------------------------------------------------------
+%% @doc Generate a list of generator of size 'Size'
+%% @spec list_of_size(int(), gen()) -> [gen()]
+%% @end
+%%--------------------------------------------------------------------
+list_of_size(Size, Gen) ->
+    lists:map(
+      fun(_) ->
+              Gen
+      end, lists:seq(1,Size)).
 
 %%--------------------------------------------------------------------
 %% @doc A simple shortcut to eqc_gen:list(eqc_gen:int())
