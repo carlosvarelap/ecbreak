@@ -1,7 +1,7 @@
 {application, ecbreak,
  [
-  {description, ""},
-  {vsn, "1"},
+  {description, "Erlang Circuit Breaker"},
+  {vsn, "0.0.0"},
   {registered, []},
   {applications, [
                   kernel,
