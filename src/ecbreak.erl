@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : ecbreak.erl
 %%% Author  : Carlos Varela <carlos.varela.paz@gmail.com>
-%%% Description : 
+%%% Description :
 %%%
 %%% Created : 18 Apr 2011 by Carlos Varela <carlos.varela.paz@gmail.com>
 %%%-------------------------------------------------------------------
@@ -17,7 +17,7 @@
 	 open/2, open/3, reset/0,
 	 handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
--record(state, {threshold = 10, 
+-record(state, {threshold = 10,
 		remainder_fails = 10
 	       }).
 -define(SERVER, ?MODULE).
@@ -29,7 +29,7 @@
 %% Function: start_link() -> ok,Pid} | ignore | {error,Error}
 %% Description:Creates a gen_fsm process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this function
-%% does not return until Module:init/1 has returned.  
+%% does not return until Module:init/1 has returned.
 %%--------------------------------------------------------------------
 start_link() ->
     gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -43,14 +43,14 @@ start_link() ->
 -spec call(Module::atom(), Function::atom(), Args::[term()]) -> term().
 call(Module, Function, Args) ->
     case gen_fsm:sync_send_event(
-	   ?SERVER, 
+	   ?SERVER,
 	   {call, Module, Function, Args}) of
 	{throw, Exception} ->
 	    throw(Exception);
 	Result ->
 	    Result
     end.
-       
+
 %%--------------------------------------------------------------------
 %% @doc Sets the failure threshold under which the circuit will be opened
 %% @spec set_failure_threshold(integer()) -> ok
@@ -68,7 +68,7 @@ set_failure_threshold(Threshold) when is_integer(Threshold) ->
 -spec reset() -> ok.
 reset()  ->
     gen_fsm:sync_send_all_state_event(?SERVER, reset).
-    
+
 %%====================================================================
 %% gen_fsm callbacks
 %%====================================================================
@@ -76,26 +76,26 @@ reset()  ->
 %% Function: init(Args) -> {ok, StateName, State} |
 %%                         {ok, StateName, State, Timeout} |
 %%                         ignore                              |
-%%                         {stop, StopReason}                   
+%%                         {stop, StopReason}
 %% Description:Whenever a gen_fsm is started using gen_fsm:start/[3,4] or
-%% gen_fsm:start_link/3,4, this function is called by the new process to 
-%% initialize. 
+%% gen_fsm:start_link/3,4, this function is called by the new process to
+%% initialize.
 %% @private
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, closed, #state{}}.
 
 %%--------------------------------------------------------------------
-%% Function: 
+%% Function:
 %% closed(Event, State) -> {next_state, NextStateName, NextState}|
-%%                             {next_state, NextStateName, 
+%%                             {next_state, NextStateName,
 %%                                NextState, Timeout} |
 %%                             {stop, Reason, NewState}
 %% Description:There should be one instance of this function for each possible
 %% state name. Whenever a gen_fsm receives an event sent using
 %% gen_fsm:send_event/2, the instance of this function with the same name as
-%% the current state name StateName is called to handle the event. It is also 
-%% called if a timeout occurs. 
+%% the current state name StateName is called to handle the event. It is also
+%% called if a timeout occurs.
 %% @private
 %%--------------------------------------------------------------------
 closed(_Event, State) ->
@@ -108,10 +108,10 @@ open(_Event, State) ->
 %%--------------------------------------------------------------------
 %% Function:
 %% state_name(Event, From, State) -> {next_state, NextStateName, NextState} |
-%%                                   {next_state, NextStateName, 
+%%                                   {next_state, NextStateName,
 %%                                     NextState, Timeout} |
 %%                                   {reply, Reply, NextStateName, NextState}|
-%%                                   {reply, Reply, NextStateName, 
+%%                                   {reply, Reply, NextStateName,
 %%                                    NextState, Timeout} |
 %%                                   {stop, Reason, NewState}|
 %%                                   {stop, Reason, Reply, NewState}
@@ -122,9 +122,9 @@ open(_Event, State) ->
 %% @private
 %%--------------------------------------------------------------------
 closed({call, Module, Function, Args}, _From, State) ->
-    {Reply, ReturnState} = 
+    {Reply, ReturnState} =
 	try
-	    NewState = 
+	    NewState =
 		case State#state.remainder_fails =:= State#state.threshold of
 		    true ->
 			State;
@@ -132,7 +132,7 @@ closed({call, Module, Function, Args}, _From, State) ->
 			State#state{remainder_fails=
 				    State#state.remainder_fails+1}
 		end,
-	    {private_call(Module, Function, Args),	     
+	    {private_call(Module, Function, Args),
 	     NewState}
 	catch
 	    Exception ->
@@ -140,7 +140,7 @@ closed({call, Module, Function, Args}, _From, State) ->
 		 State#state{remainder_fails=
 			     State#state.remainder_fails-1}}
 	end,
-    NextState = 
+    NextState =
 	case ReturnState#state.remainder_fails of
 	    0 ->
 		open;
@@ -152,12 +152,12 @@ closed({call, Module, Function, Args}, _From, State) ->
 %% @private
 open({call, _Module, _Function, _Args}, _From, State) ->
     {reply, {throw, open_circuit}, open, State}.
-    
+
 %%--------------------------------------------------------------------
-%% Function: 
-%% handle_event(Event, StateName, State) -> {next_state, NextStateName, 
+%% Function:
+%% handle_event(Event, StateName, State) -> {next_state, NextStateName,
 %%						  NextState} |
-%%                                          {next_state, NextStateName, 
+%%                                          {next_state, NextStateName,
 %%					          NextState, Timeout} |
 %%                                          {stop, Reason, NewState}
 %% Description: Whenever a gen_fsm receives an event sent using
@@ -169,13 +169,13 @@ handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
 %%--------------------------------------------------------------------
-%% Function: 
-%% handle_sync_event(Event, From, StateName, 
+%% Function:
+%% handle_sync_event(Event, From, StateName,
 %%                   State) -> {next_state, NextStateName, NextState} |
-%%                             {next_state, NextStateName, NextState, 
+%%                             {next_state, NextStateName, NextState,
 %%                              Timeout} |
 %%                             {reply, Reply, NextStateName, NextState}|
-%%                             {reply, Reply, NextStateName, NextState, 
+%%                             {reply, Reply, NextStateName, NextState,
 %%                              Timeout} |
 %%                             {stop, Reason, NewState} |
 %%                             {stop, Reason, Reply, NewState}
@@ -184,12 +184,12 @@ handle_event(_Event, StateName, State) ->
 %% the event.
 %% @private
 %%--------------------------------------------------------------------
-handle_sync_event({set_failure_threshold, Threshold}, 
+handle_sync_event({set_failure_threshold, Threshold},
 		  _From, StateName, State) ->
     Reply = ok,
     NewState = State#state{threshold=Threshold,
 			   remainder_fails=
-			   case (State#state.remainder_fails>Threshold) of 
+			   case (State#state.remainder_fails>Threshold) of
 			       true ->
 				   Threshold;
 			       false ->
@@ -206,9 +206,9 @@ handle_sync_event(_Event, _From, StateName, State) ->
     {reply, Reply, StateName, State}.
 
 %%--------------------------------------------------------------------
-%% Function: 
+%% Function:
 %% handle_info(Info,StateName,State)-> {next_state, NextStateName, NextState}|
-%%                                     {next_state, NextStateName, NextState, 
+%%                                     {next_state, NextStateName, NextState,
 %%                                       Timeout} |
 %%                                     {stop, Reason, NewState}
 %% Description: This function is called by a gen_fsm when it receives any

@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : ecbreak_app.erl
 %%% Author  : Carlos Varela <carlos.varela.paz@gmail.com>
-%%% Description : 
+%%% Description :
 %%%
 %%% Created : 18 Apr 2011 by Carlos Varela <carlos.varela.paz@gmail.com>
 %%%-------------------------------------------------------------------
