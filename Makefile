@@ -4,6 +4,10 @@ compile:
 	./rebar  compile
 tests:
 	./rebar  qc eunit suite=ecbreak_tests
+check:
+	./rebar xref dialyze
+prepare-check:
+	./rebar -v build-plt
 doc:
 	./rebar  doc
 clean:
