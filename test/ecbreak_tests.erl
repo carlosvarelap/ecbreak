@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : ecbreak_tests.erl
 %%% Author  : Carlos Varela <carlos.varela.paz@gmail.com>
-%%% Description : 
+%%% Description :
 %%%
 %%% Created : 18 Apr 2011 by Carlos Varela <carlos.varela.paz@gmail.com>
 %%%-------------------------------------------------------------------
@@ -26,7 +26,7 @@ calls_test_() ->
 			    "-export([ok/0, fail/0]).\n"
 			     "ok() -> ok.\n"
 			     "fail() -> throw(failure).\n"),
-	     compile:file("m.erl")	     
+	     compile:file("m.erl")
      end,
      fun(_) ->
 	     application:stop(ecbreak),
@@ -77,7 +77,7 @@ threshold_test_() ->
 	?_assertThrow(failure, ecbreak:call(m, fail, [])),
 	?_assertThrow(failure, ecbreak:call(m, fail, [])),
 	?_assertThrow(failure, ecbreak:call(m, fail, [])),
-	?_assertThrow(open_circuit, ecbreak:call(m, fail, []))]}      
+	?_assertThrow(open_circuit, ecbreak:call(m, fail, []))]}
      ]
     }.
 
