@@ -11,15 +11,16 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/0, call/3, set_failure_threshold/1]).
+-export([start_link/0, call/3, set_failure_threshold/1, set_attempt_timeout/1]).
 
 %% gen_fsm callbacks
 -export([init/1, closed/2, closed/3, handle_event/3,
-	 open/2, open/3, reset/0,
+	 open/2, open/3, half_open/2, half_open/3, reset/0,
 	 handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
 -record(state, {threshold = 10 :: integer(),
-		remainder_fails = 10 :: integer()
+		remainder_fails = 10 :: integer(),
+		attempt_timeout = 10000 :: integer()
 	       }).
 -define(SERVER, ?MODULE).
 
@@ -58,7 +59,6 @@ call(Module, Function, Args) ->
     end.
 
 %%--------------------------------------------------------------------
-
 %% @doc Sets the failure threshold under which the circuit will be
 %% opened. Counter is not reset. If current counter is greater than
 %% threshold, it is set to Threshold value.
@@ -68,6 +68,17 @@ call(Module, Function, Args) ->
 -spec set_failure_threshold(integer()) -> ok.
 set_failure_threshold(Threshold) when is_integer(Threshold) ->
     gen_fsm:sync_send_all_state_event(?SERVER, {set_failure_threshold, Threshold}).
+
+%%--------------------------------------------------------------------
+%% @doc Sets the attempt timeout under which the circuit will pass
+%% from open to half-open. If the current state is open, the new value
+%% will be taken into account in the next transition
+%% @spec set_attempt_timeout(integer()) -> ok
+%% @end
+%%--------------------------------------------------------------------
+-spec set_attempt_timeout(integer()) -> ok.
+set_attempt_timeout(Milliseconds) ->
+    gen_fsm:sync_send_all_state_event(?SERVER, {set_attempt_timeout, Milliseconds}).
 
 %%--------------------------------------------------------------------
 %% @doc Reset counter and puts in closed state
@@ -120,8 +131,13 @@ closed(_Event, State) ->
 
 %% @private
 -spec open(term(), #state{}) -> term().
-open(_Event, State) ->
-    {next_state, open, State}.
+open(timeout, State) ->
+    {next_state, half_open, State}.
+
+%% @private
+-spec half_open(term(), #state{}) -> term().
+half_open(_Event, State) ->
+    {next_state, half_open, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -143,24 +159,7 @@ open(_Event, State) ->
 %%--------------------------------------------------------------------
 -spec closed({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
 closed({call, Module, Function, Args}, _From, State) ->
-    {Reply, ReturnState} =
-	try
-	    NewState =
-		case State#state.remainder_fails =:= State#state.threshold of
-		    true ->
-			State;
-		    false ->
-			State#state{remainder_fails=
-				    State#state.remainder_fails+1}
-		end,
-	    {private_call(Module, Function, Args),
-	     NewState}
-	catch
-	    Exception ->
-		{{throw, Exception},
-		 State#state{remainder_fails=
-			     State#state.remainder_fails-1}}
-	end,
+    {Reply, ReturnState, _Fail} = do_call(Module, Function, Args, State),
     NextState =
 	case ReturnState#state.remainder_fails of
 	    0 ->
@@ -173,7 +172,42 @@ closed({call, Module, Function, Args}, _From, State) ->
 %% @private
 -spec open({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
 open({call, _Module, _Function, _Args}, _From, State) ->
-    {reply, {throw, open_circuit}, open, State}.
+    {reply, {throw, open_circuit}, open, State, State#state.attempt_timeout}.
+
+%% @private
+-spec half_open({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
+half_open({call, Module, Function, Args}, _From, State) ->
+    {Reply, ReturnState, Fail} = do_call(Module, Function, Args, State),
+    case Fail of
+	false ->
+	    {reply, Reply, closed, reset_state(ReturnState)};
+	true ->
+	    {reply, Reply, open, reset_state(ReturnState), State#state.attempt_timeout}
+    end.
+
+-spec do_call(atom(), atom(), [term()], #state{}) -> {term(), #state{}, boolean()}.
+do_call(Module, Function, Args, State) ->
+    try
+	NewState =
+	    case State#state.remainder_fails =:= State#state.threshold of
+		true ->
+		    State;
+		false ->
+		    State#state{remainder_fails=
+				    State#state.remainder_fails+1}
+	    end,
+	{private_call(Module, Function, Args),
+	 NewState, false}
+    catch
+	Exception ->
+	    {{throw, Exception},
+	     case State#state.remainder_fails of
+		 0 -> State;
+		 _ ->
+		     State#state{remainder_fails=
+				     State#state.remainder_fails-1}
+	     end, true}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -224,10 +258,12 @@ handle_sync_event({set_failure_threshold, Threshold},
 			   end},
     {reply, Reply, StateName, NewState};
 handle_sync_event(reset, _From, _StateName, State) ->
+    {reply, ok, closed, reset_state(State)};
+handle_sync_event({set_attempt_timeout, Milliseconds}, _From,
+		  StateName, State) ->
     Reply = ok,
-    NewState = State#state{remainder_fails=
-			   State#state.threshold},
-    {reply, Reply, closed, NewState};
+    NewState = State#state{attempt_timeout=Milliseconds},
+    {reply, Reply, StateName, NewState};
 handle_sync_event(_Event, _From, StateName, State) ->
     Reply = ok,
     {reply, Reply, StateName, State}.
@@ -294,3 +330,7 @@ private_call(Module, Function, Args) ->
             throw(bad_call)
     end.
 
+-spec reset_state(#state{}) -> #state{}.
+reset_state(State) ->
+    State#state{remainder_fails=
+		    State#state.threshold}.
