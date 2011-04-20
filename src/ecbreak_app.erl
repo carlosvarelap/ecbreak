@@ -1,8 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% File    : ecbreak_app.erl
-%%% Author  : Carlos Varela <carlos.varela.paz@gmail.com>
-%%% Description :
+%%% @author Carlos Varela <carlos.varela.paz@gmail.com>
+%%% @copyright (C) 2011, Carlos Varela
+%%% @doc
 %%%
+%%% @end
 %%% Created : 18 Apr 2011 by Carlos Varela <carlos.varela.paz@gmail.com>
 %%%-------------------------------------------------------------------
 -module(ecbreak_app).
@@ -15,10 +16,37 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called whenever an application is started using
+%% application:start/[1,2], and should start the processes of the
+%% application. If the application is structured according to the OTP
+%% design principles as a supervision tree, this means starting the
+%% top supervisor of the tree.
+%%
+%% @spec start(StartType, StartArgs) -> {ok, Pid} |
+%%                                      {ok, Pid, State} |
+%%                                      {error, Reason}
+%%      StartType = normal | {takeover, Node} | {failover, Node}
+%%      StartArgs = term()
+%% @end
+%%--------------------------------------------------------------------
 -spec start(atom(), [term()]) -> {ok, pid()} | ignore | {error, {already_started, pid()} | shutdown | term()}.
 start(_StartType, _StartArgs) ->
     ecbreak_sup:start_link().
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called whenever an application has stopped. It
+%% is intended to be the opposite of Module:start/2 and should do
+%% any necessary cleaning up. The return value is ignored.
+%%
+%% @spec stop(State) -> void()
+%% @end
+%%--------------------------------------------------------------------
 -spec stop(term()) -> ok.
 stop(_State) ->
     ok.

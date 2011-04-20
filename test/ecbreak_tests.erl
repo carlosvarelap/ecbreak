@@ -1,8 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% File    : ecbreak_tests.erl
-%%% Author  : Carlos Varela <carlos.varela.paz@gmail.com>
-%%% Description :
+%%% @author Carlos Varela <carlos.varela.paz@gmail.com>
+%%% @copyright (C) 2011, Carlos Varela
+%%% @doc
 %%%
+%%% @end
 %%% Created : 18 Apr 2011 by Carlos Varela <carlos.varela.paz@gmail.com>
 %%%-------------------------------------------------------------------
 -module(ecbreak_tests).
