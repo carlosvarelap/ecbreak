@@ -32,7 +32,7 @@ call() ->
     eqc_gen:oneof([bad_call(), fail_call(), ok_call()]).
 
 call_list() ->
-    eqc_gen:list([bad_call(), fail_call(), ok_call()]).
+    eqc_gen:list(eqc_gen:oneof([bad_call(), fail_call(), ok_call()])).
 
 
 %% generates and dep list of calls that finished qith the circuit
@@ -162,5 +162,32 @@ should_fail(
   [], ProcesedElements, _Threshold, _Remainder) ->
     {false, ProcesedElements}.
 
+prop_after_reset_ok_call_always_works() ->
+    ?FORALL(
+       Calls, call_list(),
+       ?FORALL(
+	  Threshold, threshold(),
+	  ?LET({{OKM,OKF,OKA}, _}, ok_call(),
+	       begin
+		   application:start(ecbreak),
+		   ecbreak:set_failure_threshold(Threshold),
+		   ecbreak:reset(),
 
+		   lists:foreach(
+		     fun({{M,F,A}, _ExpectedReturn}) ->
+			     try
+				 ecbreak:call(M,F,A)
+			     catch _ -> ok
+			     end
+		     end, Calls),
+		   ecbreak:reset(),
+		   Res =
+		       try
+			   ecbreak:call(OKM,OKF,OKA),
+			   true
+		       catch _ -> false
+		       end,
+		   application:stop(ecbreak),
+		   Res
+	       end))).
 
