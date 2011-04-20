@@ -1,3 +1,2 @@
-- Implement half-open state
-- Implement QuickCheck tests
+- Implement QuickCheck tests for half-open statte
 - Add concurrency (currently all calls are serialized)
