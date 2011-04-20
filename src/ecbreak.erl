@@ -17,8 +17,8 @@
 	 open/2, open/3, reset/0,
 	 handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
--record(state, {threshold = 10,
-		remainder_fails = 10
+-record(state, {threshold = 10 :: integer(),
+		remainder_fails = 10 :: integer()
 	       }).
 -define(SERVER, ?MODULE).
 
@@ -31,6 +31,7 @@
 %% initialize. To ensure a synchronized start-up procedure, this function
 %% does not return until Module:init/1 has returned.
 %%--------------------------------------------------------------------
+-spec start_link() -> {ok, pid()} | ignore | {error, {already_started, pid()} | shutdown | term()}.
 start_link() ->
     gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []).
 
@@ -85,6 +86,7 @@ reset()  ->
 %% initialize.
 %% @private
 %%--------------------------------------------------------------------
+-spec init([]) -> {ok, closed, #state{}}.
 init([]) ->
     {ok, closed, #state{}}.
 
@@ -101,10 +103,12 @@ init([]) ->
 %% called if a timeout occurs.
 %% @private
 %%--------------------------------------------------------------------
+-spec closed(term(), #state{}) -> term().
 closed(_Event, State) ->
     {next_state, closed, State}.
 
 %% @private
+-spec open(term(), #state{}) -> term().
 open(_Event, State) ->
     {next_state, open, State}.
 
@@ -124,6 +128,7 @@ open(_Event, State) ->
 %% name as the current state name StateName is called to handle the event.
 %% @private
 %%--------------------------------------------------------------------
+-spec closed({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
 closed({call, Module, Function, Args}, _From, State) ->
     {Reply, ReturnState} =
 	try
@@ -153,6 +158,7 @@ closed({call, Module, Function, Args}, _From, State) ->
     {reply, Reply, NextState, ReturnState}.
 
 %% @private
+-spec open({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
 open({call, _Module, _Function, _Args}, _From, State) ->
     {reply, {throw, open_circuit}, open, State}.
 
@@ -168,6 +174,7 @@ open({call, _Module, _Function, _Args}, _From, State) ->
 %% the event.
 %% @private
 %%--------------------------------------------------------------------
+-spec handle_event(term(), atom(), #state{}) -> term().
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -187,6 +194,9 @@ handle_event(_Event, StateName, State) ->
 %% the event.
 %% @private
 %%--------------------------------------------------------------------
+-spec handle_sync_event(
+        {set_failure_threshold, integer()} | reset,
+        pid(), atom(), #state{}) -> term().
 handle_sync_event({set_failure_threshold, Threshold},
 		  _From, StateName, State) ->
     Reply = ok,
@@ -219,6 +229,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% (or a system message).
 %% @private
 %%--------------------------------------------------------------------
+-spec handle_info(term(), atom(), #state{}) -> term().
 handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -230,6 +241,7 @@ handle_info(_Info, StateName, State) ->
 %% Reason. The return value is ignored.
 %% @private
 %%--------------------------------------------------------------------
+-spec terminate(term(), atom(), #state{}) -> term().
 terminate(_Reason, _StateName, _State) ->
     ok.
 
@@ -239,6 +251,7 @@ terminate(_Reason, _StateName, _State) ->
 %% Description: Convert process state when code is changed
 %% @private
 %%--------------------------------------------------------------------
+-spec code_change(integer, atom(), #state{}, term()) -> term().
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 

@@ -15,9 +15,10 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
-
+-spec start(atom(), [term()]) -> {ok, pid()} | ignore | {error, {already_started, pid()} | shutdown | term()}.
 start(_StartType, _StartArgs) ->
     ecbreak_sup:start_link().
 
+-spec stop(term()) -> ok.
 stop(_State) ->
     ok.
