@@ -338,7 +338,7 @@ reset_state(State) ->
 
 -spec cancel_timer(#state{}) -> #state{}.
 cancel_timer(State) ->
-    gen_fsm:cancel_timer(State#state.timeout_timer),
+    _ = gen_fsm:cancel_timer(State#state.timeout_timer),
     State#state{timeout_timer=undefined}.
 
 -spec start_timer(#state{}) -> #state{}.
