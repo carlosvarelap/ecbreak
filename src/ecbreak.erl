@@ -20,7 +20,8 @@
 
 -record(state, {threshold = 10 :: integer(),
 		remainder_fails = 10 :: integer(),
-		attempt_timeout = 10000 :: integer()
+		attempt_timeout = 10000 :: integer(),
+		timeout_timer = undefined :: reference() | undefined
 	       }).
 -define(SERVER, ?MODULE).
 
@@ -131,8 +132,8 @@ closed(_Event, State) ->
 
 %% @private
 -spec open(term(), #state{}) -> term().
-open(timeout, State) ->
-    {next_state, half_open, State}.
+open({timeout, _Ref, try_half_open}, State) ->
+    {next_state, half_open, cancel_timer(State)}.
 
 %% @private
 -spec half_open(term(), #state{}) -> term().
@@ -159,20 +160,20 @@ half_open(_Event, State) ->
 %%--------------------------------------------------------------------
 -spec closed({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
 closed({call, Module, Function, Args}, _From, State) ->
-    {Reply, ReturnState, _Fail} = do_call(Module, Function, Args, State),
-    NextState =
-	case ReturnState#state.remainder_fails of
+    {Reply, NewState, _Fail} = do_call(Module, Function, Args, State),
+    {NextState, ReturnState} =
+	case NewState#state.remainder_fails of
 	    0 ->
-		open;
+		{open, start_timer(NewState)};
 	    _ ->
-		closed
+		{closed, NewState}
 	end,
     {reply, Reply, NextState, ReturnState}.
 
 %% @private
 -spec open({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
 open({call, _Module, _Function, _Args}, _From, State) ->
-    {reply, {throw, open_circuit}, open, State, State#state.attempt_timeout}.
+    {reply, {throw, open_circuit}, open, State}.
 
 %% @private
 -spec half_open({call, atom(), atom(), [term()]}, pid(), #state{}) -> term().
@@ -180,9 +181,9 @@ half_open({call, Module, Function, Args}, _From, State) ->
     {Reply, ReturnState, Fail} = do_call(Module, Function, Args, State),
     case Fail of
 	false ->
-	    {reply, Reply, closed, reset_state(ReturnState)};
+	    {reply, Reply, closed, start_timer(reset_state(ReturnState))};
 	true ->
-	    {reply, Reply, open, reset_state(ReturnState), State#state.attempt_timeout}
+	    {reply, Reply, open, start_timer(ReturnState)}
     end.
 
 -spec do_call(atom(), atom(), [term()], #state{}) -> {term(), #state{}, boolean()}.
@@ -258,7 +259,7 @@ handle_sync_event({set_failure_threshold, Threshold},
 			   end},
     {reply, Reply, StateName, NewState};
 handle_sync_event(reset, _From, _StateName, State) ->
-    {reply, ok, closed, reset_state(State)};
+    {reply, ok, closed, cancel_timer(reset_state(State))};
 handle_sync_event({set_attempt_timeout, Milliseconds}, _From,
 		  StateName, State) ->
     Reply = ok,
@@ -334,3 +335,14 @@ private_call(Module, Function, Args) ->
 reset_state(State) ->
     State#state{remainder_fails=
 		    State#state.threshold}.
+
+-spec cancel_timer(#state{}) -> #state{}.
+cancel_timer(State) ->
+    gen_fsm:cancel_timer(State#state.timeout_timer),
+    State#state{timeout_timer=undefined}.
+
+-spec start_timer(#state{}) -> #state{}.
+start_timer(State) ->
+    State#state{
+      timeout_timer=
+	  gen_fsm:start_timer(State#state.attempt_timeout, try_half_open)}.
