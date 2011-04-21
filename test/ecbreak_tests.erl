@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(ecbreak_tests).
 
+-compile(export_all).
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
@@ -95,15 +97,40 @@ attempt_timeout_test_() ->
 	     cleanup_test_module()
      end,
      {inorder,
-      [?_test(do_n_fails(6)),
-       {timeout, 10, ?_test(timer:sleep(5000))},
-	?_assertMatch(ok, ecbreak:call(m, ok, [])),
+      [%% After the attempt timeout When the circuit is open, whe can make a
+       %% call. If success we can do more calls,if not the circuit is opened
+       %% again.
        ?_test(do_n_fails(6)),
        {timeout, 10, ?_test(timer:sleep(5000))},
-	?_assertThrow(failure, ecbreak:call(m, fail, [])),
-	?_assertThrow(open_circuit, ecbreak:call(m, ok, []))
+       ?_assertMatch(ok, ecbreak:call(m, ok, [])),
+       ?_assertMatch(ok, ecbreak:call(m, ok, [])),
+       ?_test(do_n_fails(6)),
+       {timeout, 10, ?_test(timer:sleep(5000))},
+       ?_assertThrow(failure, ecbreak:call(m, fail, [])),
+       ?_assertThrow(open_circuit, ecbreak:call(m, ok, []))
       ]}}.
 
+attempt_timeout2_test_() ->
+    {setup,
+     fun() ->
+	     application:start(ecbreak),
+	     create_test_module(),
+	     ecbreak:set_failure_threshold(5),
+	     ecbreak:set_attempt_timeout(5000)
+     end,
+     fun(_) ->
+	     application:stop(ecbreak),
+	     cleanup_test_module()
+     end,
+     {inorder,
+      [%% Making calls during half-open state does not affect the timeout
+       ?_test(do_n_fails(6)),
+       {timeout, 5, ?_test(do_call_for_n_seconds(4))},
+       ?_test(timer:sleep(2000)),
+       ?_assertMatch(ok, ecbreak:call(m, ok, []))
+      ]}}.
+
+-spec do_n_fails(integer()) -> ok.
 do_n_fails(N) ->
     lists:foreach(
       fun(_) ->
@@ -113,5 +140,22 @@ do_n_fails(N) ->
 	      end
       end, lists:seq(1,N)).
 
+-spec do_call_for_n_seconds(integer()) -> ok.
+do_call_for_n_seconds(N) ->
+    T=erlang:now(),
+    do_call_for_n_microseconds(N*1000000, T, T).
+
+-spec do_call_for_n_microseconds(integer(), integer(), integer()) -> ok.
+do_call_for_n_microseconds(N, StartTime, CurrentTime) ->
+    case timer:now_diff(CurrentTime,StartTime) < N of
+	true ->
+	    try
+		ecbreak:call(m, ok, [])
+	    catch _ -> ok
+	    end,
+	    do_call_for_n_microseconds(N, StartTime, erlang:now());
+	false ->
+	    ok
+    end.
 
 -endif.
