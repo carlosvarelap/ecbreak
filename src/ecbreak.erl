@@ -337,6 +337,8 @@ reset_state(State) ->
 		    State#state.threshold}.
 
 -spec cancel_timer(#state{}) -> #state{}.
+cancel_timer(State) when State#state.timeout_timer =:= undefined ->
+    State;
 cancel_timer(State) ->
     _ = gen_fsm:cancel_timer(State#state.timeout_timer),
     State#state{timeout_timer=undefined}.
