@@ -13,6 +13,6 @@ doc:
 clean:
 	./rebar clean
 etags:
-	find . -name "*.[he]rl" -print | etags -
+	find src include test -name "*.[he]rl" -print | etags -
 
 .PHONY: doc
