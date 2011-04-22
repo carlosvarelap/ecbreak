@@ -9,6 +9,7 @@
 -module(prop_ecbreak).
 
 -include_lib("eqc/include/eqc.hrl").
+-include_lib("eqc/include/eqc_fsm.hrl").
 
 -compile([export_all]).
 
@@ -76,6 +77,20 @@ check_throw(_,_) ->
 %%--------------------------------------------------------------------
 %% Properties
 %%--------------------------------------------------------------------
+
+prop_fsm() ->
+    ?FORALL(Cmds,commands(ecbreak_fsm),
+	    begin
+		application:start(ecbreak),
+		ecbreak:set_failure_threshold(2),
+		{H,S,Res} = run_commands(ecbreak_fsm,Cmds),
+		application:stop(ecbreak),
+		?WHENFAIL(
+		   io:format("History: ~p\nState: ~p\nRes: ~p\n",[H,S,Res]),
+		   aggregate(zip(state_names(H),
+				 command_names(Cmds)),
+			     Res == ok))
+	    end).
 
 %% Check that calls returns what it is expected
 prop_return_calls() ->
